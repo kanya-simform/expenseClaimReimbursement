@@ -1,0 +1,161 @@
+// Design decisions (see also migration 0002 for enforcement):
+// - Attachments belong to a LineItem, not the Claim (itemised receipts, not a bag of files).
+// - Claim.totalAmount is a stored, denormalized column — but it is never writable by application
+//   code. DB triggers (migration 0002) recompute it from LineItem rows on every write, and any
+//   client-supplied value is silently overwritten. This makes drift structurally impossible
+//   rather than merely disciplined-application-code impossible.
+// - Once Claim.status = APPROVED, the claim and everything under it (line items, attachments)
+//   becomes immutable at the DB layer via triggers, not just at the service layer.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLAIMANT
+  APPROVER
+  FINANCE
+
+  @@map("user_role")
+}
+
+enum ClaimStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("claim_status")
+}
+
+enum ApprovalStepStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("approval_step_status")
+}
+
+enum ClaimEventType {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RESUBMITTED
+  EDITED
+
+  @@map("claim_event_type")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  managerId    String?  @map("manager_id")
+  manager      User?    @relation("ManagerReports", fields: [managerId], references: [id])
+  reports      User[]   @relation("ManagerReports")
+
+  claims        Claim[]        @relation("ClaimantClaims")
+  approvalSteps ApprovalStep[] @relation("ApproverSteps")
+  claimEvents   ClaimEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Claim {
+  id          String      @id @default(cuid())
+  claimantId  String      @map("claimant_id")
+  claimant    User        @relation("ClaimantClaims", fields: [claimantId], references: [id])
+  status      ClaimStatus @default(DRAFT)
+  // Enforced/overwritten by a DB trigger — see migration 0002. Never trust an app-supplied value.
+  totalAmount Decimal     @default(0) @map("total_amount") @db.Decimal(12, 2)
+  currentStep Int         @default(0) @map("current_step")
+
+  lineItems     LineItem[]
+  approvalSteps ApprovalStep[]
+  events        ClaimEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([claimantId, status])
+  @@index([status, createdAt])
+  @@map("claims")
+}
+
+model LineItem {
+  id          String   @id @default(cuid())
+  claimId     String   @map("claim_id")
+  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  category    String
+  amount      Decimal  @db.Decimal(12, 2)
+  description String
+
+  attachments Attachment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([claimId])
+  @@map("line_items")
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  lineItemId String   @map("line_item_id")
+  lineItem   LineItem @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+  filename   String
+  filePath   String   @map("file_path")
+  mimeType   String   @map("mime_type")
+  size       Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([lineItemId])
+  @@map("attachments")
+}
+
+model ApprovalStep {
+  id         String             @id @default(cuid())
+  claimId    String             @map("claim_id")
+  claim      Claim              @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  sequence   Int
+  approverId String             @map("approver_id")
+  approver   User               @relation("ApproverSteps", fields: [approverId], references: [id])
+  status     ApprovalStepStatus @default(PENDING)
+  reason     String?
+  decidedAt  DateTime?          @map("decided_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([claimId, sequence])
+  @@index([approverId, status])
+  @@map("approval_steps")
+}
+
+model ClaimEvent {
+  id       String         @id @default(cuid())
+  claimId  String         @map("claim_id")
+  claim    Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  type     ClaimEventType
+  actorId  String         @map("actor_id")
+  actor    User           @relation(fields: [actorId], references: [id])
+  reason   String?
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([claimId, createdAt])
+  @@map("claim_events")
+}
