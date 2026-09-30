@@ -54,7 +54,8 @@ enum ClaimEventType {
 
 model User {
   id           String   @id @default(cuid())
-  name         String
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
   email        String   @unique
   passwordHash String   @map("password_hash")
   role         UserRole

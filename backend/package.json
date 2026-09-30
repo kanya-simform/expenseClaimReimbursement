@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "postbuild": "cp generated/prisma/*.node dist/generated/prisma/",
+    "start": "node dist/src/index.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -38,7 +42,7 @@
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.12",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2",

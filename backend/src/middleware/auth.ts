@@ -27,8 +27,11 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
 
 export function requireRole(...roles: Array<"CLAIMANT" | "APPROVER" | "FINANCE">) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
       throw new UnauthenticatedError();
+    }
+    if (!roles.includes(req.user.role)) {
+      throw new ForbiddenError();
     }
     next();
   };
