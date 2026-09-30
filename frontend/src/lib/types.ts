@@ -7,3 +7,23 @@ export interface User {
   email: string;
   role: Role;
 }
+
+export type ClaimStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED";
+
+export interface LineItem {
+  id: string;
+  date: string;
+  category: string;
+  amount: string;
+  description: string;
+}
+
+export interface Claim {
+  id: string;
+  status: ClaimStatus;
+  totalAmount: string;
+  currentStep: number;
+  createdAt: string;
+  updatedAt: string;
+  lineItems: LineItem[];
+}

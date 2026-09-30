@@ -49,7 +49,7 @@ export function LoginPage() {
     setServerError(null);
     try {
       const loggedInUser = await login(values.email, values.password);
-      navigate(homeRouteForRole(loggedInUser.role), { replace: true });
+      void navigate(homeRouteForRole(loggedInUser.role), { replace: true });
     } catch (error) {
       setServerError(getErrorMessage(error, "Invalid email or password"));
     }
