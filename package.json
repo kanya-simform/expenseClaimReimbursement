@@ -1,0 +1,30 @@
+{
+  "name": "expenseclaimreimbursment",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A POC expense claim submission and approval system: employees submit itemised claims with receipts, claims route through approval based on amount, and finance can export what's approved for a period without touching a spreadsheet.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kanya-simform/expenseClaimReimbursement.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kanya-simform/expenseClaimReimbursement/issues"
+  },
+  "homepage": "https://github.com/kanya-simform/expenseClaimReimbursement#readme",
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend"
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx,js,jsx,json,md,css}": "prettier --write"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.9"
+  }
+}
