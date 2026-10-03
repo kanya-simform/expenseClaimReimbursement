@@ -124,6 +124,20 @@ export async function updateClaim(
   return getClaimForClaimant(claimId, claimantId);
 }
 
+export async function deleteClaim(claimantId: string, claimId: string) {
+  const claim = await getClaimForClaimant(claimId, claimantId);
+
+  if (claim.status !== "PENDING") {
+    throw new ConflictError(`Only pending claims can be deleted`);
+  }
+
+  // Line items/attachments cascade at the DB level (onDelete: Cascade in schema.prisma) —
+  // the caller still needs the pre-delete claim back to clean up attachment files on disk.
+  await prisma.claim.delete({ where: { id: claimId } });
+
+  return claim;
+}
+
 export interface AddAttachmentInput {
   filename: string;
   filePath: string;
