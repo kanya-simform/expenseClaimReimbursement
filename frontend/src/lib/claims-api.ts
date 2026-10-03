@@ -25,6 +25,18 @@ export async function updateClaim(claimId: string, lineItems: LineItemInput[]): 
   return res.data.claim;
 }
 
+export async function deleteClaim(claimId: string): Promise<void> {
+  await apiClient.delete(`/claims/${claimId}`);
+}
+
+export async function importClaimCsv(file: File, receipts: File[] = []): Promise<Claim> {
+  const formData = new FormData();
+  formData.append("file", file);
+  receipts.forEach((receipt) => formData.append("receipts", receipt));
+  const res = await apiClient.post<{ claim: Claim }>("/claims/import", formData);
+  return res.data.claim;
+}
+
 export async function uploadAttachment(
   claimId: string,
   lineItemId: string,
