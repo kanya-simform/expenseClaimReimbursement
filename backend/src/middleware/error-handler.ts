@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import multer from "multer";
 import { ZodError } from "zod";
 import { Prisma } from "../../generated/prisma/client";
 import { AppError } from "../errors";
@@ -31,6 +32,12 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         details: err.issues,
       },
     });
+  }
+
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === "LIMIT_FILE_SIZE" ? "File is too large (max 5MB)" : err.message;
+    return res.status(400).json({ error: { code: "VALIDATION_ERROR", message } });
   }
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
