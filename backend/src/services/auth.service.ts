@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
-import { ConflictError, NotFoundError, UnauthenticatedError } from "../errors";
+import { ConflictError, NotFoundError, UnauthenticatedError, ValidationError } from "../errors";
 import type { UserRole } from "../../generated/prisma/client";
 import { prisma } from "../lib/prisma";
 
@@ -43,12 +43,26 @@ export interface RegisterInput {
   email: string;
   password: string;
   role: UserRole;
+  managerEmail?: string;
 }
 
 export async function register(input: RegisterInput) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
     throw new ConflictError("An account with this email already exists");
+  }
+
+  let managerId: string | undefined;
+  if (input.managerEmail) {
+    const manager = await prisma.user.findUnique({ where: { email: input.managerEmail } });
+    if (!manager) {
+      throw new ValidationError("No account exists with that manager email");
+    }
+    // Only an APPROVER can sit in the approval chain — see approval-routing.ts (spec §3.2).
+    if (manager.role !== "APPROVER") {
+      throw new ValidationError("The manager account must have the Approver role");
+    }
+    managerId = manager.id;
   }
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
@@ -60,6 +74,7 @@ export async function register(input: RegisterInput) {
       email: input.email,
       passwordHash,
       role: input.role,
+      managerId,
     },
   });
 

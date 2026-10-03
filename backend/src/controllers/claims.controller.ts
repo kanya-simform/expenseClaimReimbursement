@@ -124,9 +124,17 @@ export async function importClaimHandler(req: Request, res: Response) {
   res.status(201).json({ claim: finalClaim });
 }
 
+const listClaimsQuerySchema = z.object({
+  status: z.enum(["DRAFT", "PENDING", "APPROVED", "REJECTED"]).optional(),
+  search: z.string().trim().min(1).max(200).optional(),
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().optional(),
+});
+
 export async function listClaimsHandler(req: Request, res: Response) {
-  const claims = await claimsService.listClaimsForClaimant(req.user!.id);
-  res.json({ claims });
+  const query = listClaimsQuerySchema.parse(req.query);
+  const { claims, pagination } = await claimsService.listClaimsForClaimant(req.user!.id, query);
+  res.json({ claims, pagination });
 }
 
 export async function getClaimHandler(req: Request, res: Response) {
