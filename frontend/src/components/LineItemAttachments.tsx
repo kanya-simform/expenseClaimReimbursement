@@ -13,6 +13,7 @@ interface LineItemAttachmentsProps {
   lineItemId: string;
   attachments: Attachment[];
   canModify: boolean;
+  onView?: (claimId: string, lineItemId: string, attachmentId: string) => Promise<Blob>;
 }
 
 export function LineItemAttachments({
@@ -20,6 +21,7 @@ export function LineItemAttachments({
   lineItemId,
   attachments,
   canModify,
+  onView = viewAttachment,
 }: Readonly<LineItemAttachmentsProps>) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,7 +47,7 @@ export function LineItemAttachments({
 
   async function handleView(attachment: Attachment) {
     try {
-      const blob = await viewAttachment(claimId, lineItemId, attachment.id);
+      const blob = await onView(claimId, lineItemId, attachment.id);
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);

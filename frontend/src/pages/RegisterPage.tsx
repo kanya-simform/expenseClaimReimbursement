@@ -8,15 +8,10 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { PasswordStrengthMeter } from "@/components/PasswordStrengthMeter";
 import { homeRouteForRole } from "@/components/ProtectedRoute";
 import { RequiredMark } from "@/components/RequiredMark";
+import { getPasswordStrength } from "@/lib/password-strength";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -73,7 +68,10 @@ const registerSchema = z
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
-      .max(72, "Password must be at most 72 characters"),
+      .max(72, "Password must be at most 72 characters")
+      .refine((value) => getPasswordStrength(value).score >= 3, {
+        message: "Password is too weak — add length, mixed case, a number, or a symbol",
+      }),
     confirmPassword: z.string().min(1, "Please confirm your password"),
     role: z
       .string()
@@ -82,6 +80,7 @@ const registerSchema = z
           value === "CLAIMANT" || value === "APPROVER" || value === "FINANCE",
         { message: "Select a role" },
       ),
+    managerEmail: z.string().email("Enter a valid manager email").optional().or(z.literal("")),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -108,6 +107,7 @@ export function RegisterPage() {
   });
 
   const password = watch("password") ?? "";
+  const role = watch("role");
 
   if (!isLoading && user) {
     return <Navigate to={homeRouteForRole(user.role)} replace />;
@@ -191,9 +191,7 @@ export function RegisterPage() {
                 aria-invalid={!!errors.email}
                 {...register("email")}
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -221,10 +219,31 @@ export function RegisterPage() {
                   </Select>
                 )}
               />
-              {errors.role && (
-                <p className="text-sm text-destructive">{errors.role.message}</p>
-              )}
+              {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
             </div>
+
+            {role !== "FINANCE" && (
+              <div className="grid gap-2">
+                <Label htmlFor="managerEmail">Manager's email</Label>
+                <Input
+                  id="managerEmail"
+                  type="email"
+                  autoComplete="off"
+                  placeholder="manager@example.com"
+                  aria-invalid={!!errors.managerEmail}
+                  {...register("managerEmail")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your manager must already have an Approver account.{" "}
+                  {role === "APPROVER"
+                    ? "Only needed if claims you approve might require a second-tier approver above you."
+                    : "Claims route to them for approval — you won't be able to submit a claim without one set."}
+                </p>
+                {errors.managerEmail && (
+                  <p className="text-sm text-destructive">{errors.managerEmail.message}</p>
+                )}
+              </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="password">
@@ -269,7 +288,10 @@ export function RegisterPage() {
 
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
+              <Link
+                to="/login"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
                 Sign in
               </Link>
             </p>

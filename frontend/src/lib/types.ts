@@ -10,6 +10,13 @@ export interface User {
 
 export type ClaimStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED";
 
+export interface Pagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface Attachment {
   id: string;
   lineItemId: string;
@@ -29,6 +36,32 @@ export interface LineItem {
   attachments: Attachment[];
 }
 
+export type ApprovalStepStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface ApprovalStep {
+  id: string;
+  sequence: number;
+  approverId: string;
+  status: ApprovalStepStatus;
+  reason: string | null;
+  decidedAt: string | null;
+  approver: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+export type ClaimEventType = "SUBMITTED" | "APPROVED" | "REJECTED" | "RESUBMITTED" | "EDITED";
+
+export interface ClaimEvent {
+  id: string;
+  type: ClaimEventType;
+  actorId: string;
+  reason: string | null;
+  createdAt: string;
+}
+
 export interface Claim {
   id: string;
   status: ClaimStatus;
@@ -37,4 +70,7 @@ export interface Claim {
   createdAt: string;
   updatedAt: string;
   lineItems: LineItem[];
+  claimant?: Pick<User, "id" | "firstName" | "lastName" | "email">;
+  approvalSteps?: ApprovalStep[];
+  events?: ClaimEvent[];
 }
