@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { exportApprovedClaimsCsv, listFinanceClaims } from "@/lib/finance-api";
+import { exportClaimsCsv, listFinanceClaims } from "@/lib/finance-api";
 import { getErrorMessage } from "@/lib/get-error-message";
 import type { ClaimStatus } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
@@ -29,16 +29,17 @@ const STATUS_FILTER_LABEL: Record<ClaimStatus, string> = {
 };
 
 function ExportCard() {
+  const [status, setStatus] = useState<ClaimStatus>("APPROVED");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Mirrors the backend's own check (finance.service.ts's getApprovedClaimsForExport) so the
-  // user sees this immediately instead of round-tripping to the server to find out.
+  // Mirrors the backend's own check (finance.service.ts's getClaimsForExport) so the user
+  // sees this immediately instead of round-tripping to the server to find out.
   const dateRangeError = from && to && from > to ? "'From' must be on or before 'to'" : null;
 
   const mutation = useMutation({
-    mutationFn: () => exportApprovedClaimsCsv(from, to),
+    mutationFn: () => exportClaimsCsv(status, from, to),
     onSuccess: () => {
       setError(null);
       toast.success("Export downloaded");
@@ -49,15 +50,31 @@ function ExportCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Export approved claims</CardTitle>
+        <CardTitle>Export claims</CardTitle>
         <CardDescription>
-          Downloads a CSV of every claim approved within the period — one row per line item. Pending
-          or rejected claims never appear here.
+          Downloads a CSV for the chosen status within the period — one row per line item. Defaults
+          to Approved, since that's what finance exports for bookkeeping; a rejected or in-flight
+          claim never appears unless you pick that status yourself.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex flex-wrap items-end gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="export-status">Status</Label>
+            <Select value={status} onValueChange={(value) => setStatus(value as ClaimStatus)}>
+              <SelectTrigger id="export-status" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["APPROVED", "PENDING", "REJECTED"] as const).map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {STATUS_FILTER_LABEL[value]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor="export-from">From</Label>
             <Input

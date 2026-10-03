@@ -18,16 +18,21 @@ export async function listFinanceClaims(
   return res.data;
 }
 
-export async function exportApprovedClaimsCsv(from: string, to: string): Promise<void> {
+export async function exportClaimsCsv(
+  status: ClaimStatus,
+  from: string,
+  to: string,
+): Promise<void> {
   const res = await apiClient.get("/finance/export", {
-    params: { from, to },
+    params: { status, from, to },
     responseType: "blob",
+    headers: { "X-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
 
   const url = URL.createObjectURL(res.data as Blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `approved-claims-${from}-to-${to}.csv`;
+  link.download = `${status.toLowerCase()}-claims-${from}-to-${to}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }

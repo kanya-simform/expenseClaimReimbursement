@@ -1,4 +1,5 @@
 import { stringify } from "csv-stringify/sync";
+import { formatInTimeZone } from "./timezone";
 
 interface ExportableLineItem {
   date: Date;
@@ -10,6 +11,7 @@ interface ExportableLineItem {
 
 interface ExportableClaim {
   id: string;
+  status: string;
   totalAmount: unknown;
   updatedAt: Date;
   claimant: { firstName: string; lastName: string; email: string };
@@ -18,9 +20,10 @@ interface ExportableClaim {
 
 const COLUMNS = [
   "claimId",
+  "status",
   "claimantName",
   "claimantEmail",
-  "approvedAt",
+  "lastUpdatedAt",
   "claimTotal",
   "lineItemDate",
   "category",
@@ -29,14 +32,15 @@ const COLUMNS = [
 ] as const;
 
 // One row per line item, not per claim — bookkeeping needs the itemised breakdown, and the
-// claim-level fields (id, claimant, total, approval date) just repeat across a claim's rows.
-export function buildApprovedClaimsCsv(claims: ExportableClaim[]): string {
+// claim-level fields (id, claimant, total, status) just repeat across a claim's rows.
+export function buildClaimsExportCsv(claims: ExportableClaim[], timeZone: string): string {
   const rows = claims.flatMap((claim) =>
     claim.lineItems.map((item) => ({
       claimId: claim.id,
+      status: claim.status,
       claimantName: `${claim.claimant.firstName} ${claim.claimant.lastName}`,
       claimantEmail: claim.claimant.email,
-      approvedAt: claim.updatedAt.toISOString(),
+      lastUpdatedAt: formatInTimeZone(claim.updatedAt, timeZone),
       claimTotal: String(claim.totalAmount),
       lineItemDate: item.date.toISOString().slice(0, 10),
       category:

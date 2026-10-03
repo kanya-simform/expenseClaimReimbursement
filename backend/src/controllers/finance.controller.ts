@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { buildApprovedClaimsCsv } from "../lib/csv-export";
+import { buildClaimsExportCsv } from "../lib/csv-export";
+import { resolveTimeZone } from "../lib/timezone";
 import * as financeService from "../services/finance.service";
 
 const listQuerySchema = z.object({
@@ -18,6 +19,7 @@ const listQuerySchema = z.object({
 });
 
 const exportQuerySchema = z.object({
+  status: z.enum(["DRAFT", "PENDING", "APPROVED", "REJECTED"]).default("APPROVED"),
   from: z.string().refine((value) => !Number.isNaN(Date.parse(value)), {
     message: "Enter a valid from date",
   }),
@@ -47,15 +49,16 @@ export async function getClaimHandler(req: Request, res: Response) {
 }
 
 export async function exportCsvHandler(req: Request, res: Response) {
-  const { from, to } = exportQuerySchema.parse(req.query);
+  const { status, from, to } = exportQuerySchema.parse(req.query);
+  const timeZone = resolveTimeZone(req.headers["x-timezone"]);
 
-  const claims = await financeService.getApprovedClaimsForExport(new Date(from), new Date(to));
-  const csv = buildApprovedClaimsCsv(claims);
+  const claims = await financeService.getClaimsForExport(status, new Date(from), new Date(to));
+  const csv = buildClaimsExportCsv(claims, timeZone);
 
   res.setHeader("Content-Type", "text/csv");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="approved-claims-${from}-to-${to}.csv"`,
+    `attachment; filename="${status.toLowerCase()}-claims-${from}-to-${to}.csv"`,
   );
   res.send(csv);
 }

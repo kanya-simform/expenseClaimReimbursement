@@ -52,7 +52,7 @@ export async function listAllClaims(filters: ListClaimsFilters = {}) {
   return { claims, pagination: buildPaginationMeta(total, page, pageSize) };
 }
 
-export async function getApprovedClaimsForExport(from: Date, to: Date) {
+export async function getClaimsForExport(status: ClaimStatus, from: Date, to: Date) {
   if (from > to) {
     throw new ValidationError("'from' must be on or before 'to'");
   }
@@ -60,14 +60,21 @@ export async function getApprovedClaimsForExport(from: Date, to: Date) {
   // Once a claim is APPROVED it's permanently immutable (the claims_before_write trigger
   // rejects any further UPDATE — see migration 20260921080405), so `updatedAt` on an
   // APPROVED row is exactly the moment it finished approving and can never drift after. No
-  // separate "approvedAt" column is needed to filter "approved within this period".
+  // separate "approvedAt" column is needed to filter "approved within this period". Other
+  // statuses have no equivalent fixed instant (a PENDING or REJECTED claim can still be
+  // edited), so those fall back to filtering by when the claim was submitted.
+  if (status === "APPROVED") {
+    return prisma.claim.findMany({
+      where: { status: "APPROVED", updatedAt: { gte: from, lte: to } },
+      include: FINANCE_CLAIM_INCLUDE,
+      orderBy: { updatedAt: "asc" },
+    });
+  }
+
   return prisma.claim.findMany({
-    where: {
-      status: "APPROVED",
-      updatedAt: { gte: from, lte: to },
-    },
+    where: { status, createdAt: { gte: from, lte: to } },
     include: FINANCE_CLAIM_INCLUDE,
-    orderBy: { updatedAt: "asc" },
+    orderBy: { createdAt: "asc" },
   });
 }
 
