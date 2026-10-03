@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { CATEGORY_LABEL } from "@/lib/categories";
-import type { ClaimStatus, LineItem } from "@/lib/types";
+import type { ClaimEvent, ClaimEventType, ClaimStatus, LineItem } from "@/lib/types";
 
 export const STATUS_LABEL: Record<ClaimStatus, string> = {
   DRAFT: "Draft",
@@ -31,4 +31,37 @@ export function categoryLabelFor(item: Pick<LineItem, "category" | "customCatego
     return item.customCategory;
   }
   return CATEGORY_LABEL[item.category as keyof typeof CATEGORY_LABEL] ?? item.category;
+}
+
+const EVENT_VERB: Record<ClaimEventType, string> = {
+  SUBMITTED: "submitted",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  RESUBMITTED: "resubmitted",
+  EDITED: "edited",
+};
+
+// Spec §6: "submission, approval, and rejection should each leave a structured trace — this
+// is the audit trail finance will actually ask for when a claim is disputed." The data
+// (ClaimEvent rows) exists regardless of whether this renders; this is just the one place
+// that actually surfaces it to a human, shared across the claimant/approver/finance views.
+export function ClaimHistory({ events }: Readonly<{ events: ClaimEvent[] }>) {
+  if (events.length === 0) return null;
+
+  return (
+    <div className="grid gap-1">
+      <p className="text-xs font-medium text-muted-foreground">History</p>
+      <ul className="grid gap-0.5 text-xs text-muted-foreground">
+        {events.map((event) => (
+          <li key={event.id}>
+            <span className="text-foreground">
+              {event.actor.firstName} {event.actor.lastName}
+            </span>{" "}
+            {EVENT_VERB[event.type]} this claim · {new Date(event.createdAt).toLocaleString()}
+            {event.reason && <> — "{event.reason}"</>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }

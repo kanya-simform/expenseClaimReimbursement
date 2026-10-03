@@ -10,7 +10,10 @@ const APPROVAL_CLAIM_INCLUDE = {
     include: { approver: { select: { id: true, firstName: true, lastName: true } } },
     orderBy: { sequence: "asc" },
   },
-  events: { orderBy: { createdAt: "asc" } },
+  events: {
+    include: { actor: { select: { id: true, firstName: true, lastName: true } } },
+    orderBy: { createdAt: "asc" },
+  },
 } as const;
 
 export interface QueueFilters extends PaginationInput {

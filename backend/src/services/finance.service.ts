@@ -14,7 +14,10 @@ const FINANCE_CLAIM_INCLUDE = {
     include: { approver: { select: { id: true, firstName: true, lastName: true } } },
     orderBy: { sequence: "asc" },
   },
-  events: { orderBy: { createdAt: "asc" } },
+  events: {
+    include: { actor: { select: { id: true, firstName: true, lastName: true } } },
+    orderBy: { createdAt: "asc" },
+  },
 } as const;
 
 export interface ListClaimsFilters extends PaginationInput {
@@ -57,22 +60,17 @@ export async function getClaimsForExport(status: ClaimStatus, from: Date, to: Da
     throw new ValidationError("'from' must be on or before 'to'");
   }
 
-  // Once a claim is APPROVED it's permanently immutable (the claims_before_write trigger
-  // rejects any further UPDATE — see migration 20260921080405), so `updatedAt` on an
-  // APPROVED row is exactly the moment it finished approving and can never drift after. No
-  // separate "approvedAt" column is needed to filter "approved within this period". Other
-  // statuses have no equivalent fixed instant (a PENDING or REJECTED claim can still be
-  // edited), so those fall back to filtering by when the claim was submitted.
-  if (status === "APPROVED") {
-    return prisma.claim.findMany({
-      where: { status: "APPROVED", updatedAt: { gte: from, lte: to } },
-      include: FINANCE_CLAIM_INCLUDE,
-      orderBy: { updatedAt: "asc" },
-    });
-  }
-
+  // "Within the period" is keyed off the line item dates the claimant actually entered when
+  // creating the claim — not a claim-level system timestamp (createdAt/updatedAt mean
+  // different things depending on status) — so the same rule applies regardless of status.
+  // A claim qualifies if ANY of its line items falls in range; once it qualifies, every line
+  // item is included (not just the in-range ones), so each row's claimTotal still matches the
+  // sum of that claim's visible rows.
   return prisma.claim.findMany({
-    where: { status, createdAt: { gte: from, lte: to } },
+    where: {
+      status,
+      lineItems: { some: { date: { gte: from, lte: to } } },
+    },
     include: FINANCE_CLAIM_INCLUDE,
     orderBy: { createdAt: "asc" },
   });

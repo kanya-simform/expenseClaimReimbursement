@@ -1,18 +1,19 @@
 import { stringify } from "csv-stringify/sync";
+import type { Prisma } from "../../generated/prisma/client";
 import { formatInTimeZone } from "./timezone";
 
 interface ExportableLineItem {
   date: Date;
   category: string;
   customCategory: string | null;
-  amount: unknown;
+  amount: Prisma.Decimal;
   description: string;
 }
 
 interface ExportableClaim {
   id: string;
   status: string;
-  totalAmount: unknown;
+  totalAmount: Prisma.Decimal;
   updatedAt: Date;
   claimant: { firstName: string; lastName: string; email: string };
   lineItems: ExportableLineItem[];

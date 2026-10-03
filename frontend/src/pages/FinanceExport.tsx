@@ -2,7 +2,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { categoryLabelFor, formatCurrency, StatusBadge } from "@/components/claim-display";
+import {
+  categoryLabelFor,
+  ClaimHistory,
+  formatCurrency,
+  StatusBadge,
+} from "@/components/claim-display";
 import { AppShell } from "@/components/layout/AppShell";
 import { PaginationControls } from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
@@ -195,6 +200,7 @@ function ClaimsBrowser() {
                   </li>
                 ))}
               </ul>
+              <ClaimHistory events={claim.events ?? []} />
             </CardContent>
           </Card>
         ))}
