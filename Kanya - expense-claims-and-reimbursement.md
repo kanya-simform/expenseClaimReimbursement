@@ -63,7 +63,7 @@ real failures here even if the happy path demos perfectly.
   rejected claim must never appear.
 
 ## 4. Data to think through
-
+doc
 You choose the exact schema. At minimum, your model needs to represent: employees, claims and
 their status, the line items belonging to each claim, and a record of what happened to a claim
 over time (submitted, approved, rejected, by whom, when, why) — not just its current state.

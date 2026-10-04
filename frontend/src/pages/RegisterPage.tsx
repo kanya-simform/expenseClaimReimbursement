@@ -117,7 +117,7 @@ export function RegisterPage() {
     setServerError(null);
     try {
       const registeredUser = await registerUser(values);
-      navigate(homeRouteForRole(registeredUser.role), { replace: true });
+      void navigate(homeRouteForRole(registeredUser.role), { replace: true });
     } catch (error) {
       setServerError(getErrorMessage(error, "Could not create your account"));
     }

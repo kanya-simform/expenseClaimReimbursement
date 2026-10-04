@@ -95,13 +95,17 @@ model Claim {
 }
 
 model LineItem {
-  id          String   @id @default(cuid())
-  claimId     String   @map("claim_id")
-  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  date        DateTime @db.Date
-  category    String
-  amount      Decimal  @db.Decimal(12, 2)
-  description String
+  id             String   @id @default(cuid())
+  claimId        String   @map("claim_id")
+  claim          Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  date           DateTime @db.Date
+  category       String
+  // Only set (and only meaningful) when category = "OTHER" — the user-specified label for
+  // a category outside the fixed list. Kept separate from `category` so the column stays a
+  // clean, queryable enum value and round-tripping into the edit form stays unambiguous.
+  customCategory String?  @map("custom_category")
+  amount         Decimal  @db.Decimal(12, 2)
+  description    String
 
   attachments Attachment[]
 

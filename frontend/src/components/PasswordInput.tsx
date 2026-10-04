@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export function PasswordInput({
   className,
   ...props
-}: Omit<React.ComponentProps<"input">, "type">) {
+}: Readonly<Omit<React.ComponentProps<"input">, "type">>) {
   const [visible, setVisible] = useState(false);
 
   return (
