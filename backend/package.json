@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "postbuild": "cp generated/prisma/*.node dist/generated/prisma/",
+    "build": "mkdir -p generated/prisma && echo '{\"type\":\"module\"}' > generated/prisma/package.json && tsc",
+    "postbuild": "cp generated/prisma/*.node generated/prisma/package.json dist/generated/prisma/ && rm -rf dist/src/__tests__",
     "start": "node dist/src/index.js",
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "oxlint ."
   },
   "keywords": [],

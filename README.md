@@ -18,11 +18,11 @@ if the happy path demos perfectly.
 
 ## Actors
 
-| Role | Can do |
-|---|---|
+| Role         | Can do                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------- |
 | **Claimant** | Submit claims with line items and receipts, view their own claims, edit rejected claims |
-| **Approver** | See only claims routed to them, approve or reject with a reason |
-| **Finance** | Export approved claims for a period; see claims across all employees (read-only) |
+| **Approver** | See only claims routed to them, approve or reject with a reason                         |
+| **Finance**  | Export approved claims for a period; see claims across all employees (read-only)        |
 
 ## Core requirements
 
@@ -59,9 +59,11 @@ enforcement:
 ## Tech stack
 
 - **Backend:** Express, PostgreSQL, Prisma (pinned to `6.19.3` — see `CLAUDE.md` for why)
-- **Frontend:** React (Vite), Tailwind CSS + shadcn/ui — not yet scaffolded
+- **Frontend:** React (Vite), Tailwind CSS + shadcn/ui (base-ui variant)
 - **Attachments:** local disk storage for this POC (an object-store pattern with signed upload
   URLs is an optional stretch goal per the spec, not core scope)
+- **Tests:** Jest + Supertest, run against a real Postgres database (not mocked) — see
+  `backend/src/__tests__/`
 
 ## Repository layout
 
@@ -70,30 +72,66 @@ enforcement:
 ├── Kanya - expense-claims-and-reimbursement.md   # the spec
 ├── CLAUDE.md                                     # guidance for Claude Code instances
 ├── README.md
-└── backend/
-    ├── prisma/
-    │   ├── schema.prisma                         # data model + design-decision notes
-    │   └── migrations/                           # schema migrations + the integrity triggers
-    ├── prisma.config.ts
-    └── .env.example                              # copy to .env and fill in DATABASE_URL
+├── docker-compose.yml                            # db + migrate + backend + frontend
+├── .env.example                                  # copy to .env and fill in before docker compose up
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma                         # data model + design-decision notes
+│   │   └── migrations/                           # schema migrations + the integrity triggers
+│   ├── prisma.config.ts
+│   ├── Dockerfile
+│   └── src/
+│       ├── routes/ controllers/ services/        # auth, claims, approvals, finance
+│       └── __tests__/                            # the two spec-required tests + more
+└── frontend/
+    ├── Dockerfile
+    └── src/
+        └── pages/                                # ClaimantDashboard, ApproverQueue, FinanceExport
 ```
-
-`frontend/` does not exist yet.
 
 ## Getting started
 
-There is no `docker-compose.yml` yet — the spec's "`docker compose up` and no manual setup beyond
-a documented `.env`" requirement (§6) is not yet satisfied. For now, backend setup is manual:
+### Docker (recommended — this is the `docker compose up` path spec §6 asks for)
+
+1. `cp .env.example .env` at the repo root and fill in `POSTGRES_PASSWORD` and `JWT_SECRET`
+   (`openssl rand -hex 32` for the latter). This is the only setup step.
+2. `docker compose up --build`
+3. Frontend: `http://localhost:5173` · Backend API: `http://localhost:4000/api`
+
+This brings up Postgres, runs migrations via a one-shot `migrate` service (the `backend`
+service waits for it to succeed before starting), then starts the backend and frontend.
+Uploaded receipts and the Postgres data both persist in named volumes across
+`docker compose down` (not `down -v`).
+
+If you're already running the backend locally via `npm run dev` (below), stop it first —
+both bind host port 4000.
+
+### Manual (without Docker)
 
 1. Have a PostgreSQL database available and create a role/database for this project.
 2. `cd backend && cp .env.example .env` and fill in `DATABASE_URL`. If the password contains
    special characters (e.g. `@`), percent-encode them (`@` → `%40`).
 3. `npm install`
 4. `npx prisma migrate dev` to apply migrations (schema + integrity triggers) against your database.
+5. `npm run dev` (backend) and, in `frontend/`, `cp .env.example .env` then `npm install && npm run dev`.
+
+### Running the tests
+
+```
+cd backend && npm test
+```
+
+Runs against the database in your `backend/.env` — there's no separate test database or
+mocking of Prisma, since the two hardest requirements (claim-total integrity, query-scoped
+approver authorization) are specifically about things a mock can't prove.
 
 ## Current status
 
-Only the Prisma data model and its database-level integrity guarantees exist so far (verified
-live against Postgres — total-sync and approved-claim locking both hold under direct SQL
-tampering, not just through application code). No Express routes, authentication, approval
-routing, rejection/resubmission flow, finance export, or frontend have been built yet.
+All of spec §3 (3.1 through 3.6) is implemented: claim submission with itemised line items,
+amount-based approval routing, rejection/resubmission with preserved history, approved-claim
+immutability (enforced at the database layer, not just the service layer), visibility
+boundaries per role, and the finance CSV export. Authentication/authorization, CSV bulk
+import, file attachments, filtering + pagination on every listing, and an audit-trail view are
+also built. The two tests spec §6 explicitly calls for (query-scoped approver authorization,
+claim-total integrity) exist in `backend/src/__tests__/`, along with tests for approved-claim
+immutability and authentication-required-on-every-route.

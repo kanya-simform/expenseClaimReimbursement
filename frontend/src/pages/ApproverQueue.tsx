@@ -156,7 +156,10 @@ function ApprovalClaimCard({ claim, view }: Readonly<{ claim: Claim; view: View 
             <p className="text-xs text-muted-foreground">
               Approval chain:{" "}
               {claim.approvalSteps
-                .map((step) => `${step.approver.firstName} (${step.status.toLowerCase()})`)
+                .map(
+                  (step) =>
+                    `${step.approver.firstName} ${step.approver.lastName} (${step.status.toLowerCase()})`,
+                )
                 .join(" → ")}
             </p>
           )}
