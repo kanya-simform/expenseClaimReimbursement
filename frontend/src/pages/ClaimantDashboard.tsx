@@ -3,7 +3,12 @@ import { AlertCircle, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
-import { categoryLabelFor, formatCurrency, StatusBadge } from "@/components/claim-display";
+import {
+  categoryLabelFor,
+  ClaimHistory,
+  formatCurrency,
+  StatusBadge,
+} from "@/components/claim-display";
 import { ClaimLineItemsForm } from "@/components/ClaimLineItemsForm";
 import { LineItemAttachments } from "@/components/LineItemAttachments";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -309,6 +314,7 @@ function ClaimCard({ claim }: Readonly<{ claim: Claim }>) {
               </li>
             ))}
           </ul>
+          <ClaimHistory events={claim.events ?? []} />
         </CardContent>
       </Card>
       <AlertDialog

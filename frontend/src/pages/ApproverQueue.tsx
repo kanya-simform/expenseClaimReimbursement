@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { categoryLabelFor, formatCurrency, StatusBadge } from "@/components/claim-display";
+import {
+  categoryLabelFor,
+  ClaimHistory,
+  formatCurrency,
+  StatusBadge,
+} from "@/components/claim-display";
 import { AppShell } from "@/components/layout/AppShell";
 import { LineItemAttachments } from "@/components/LineItemAttachments";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -151,10 +156,14 @@ function ApprovalClaimCard({ claim, view }: Readonly<{ claim: Claim; view: View 
             <p className="text-xs text-muted-foreground">
               Approval chain:{" "}
               {claim.approvalSteps
-                .map((step) => `${step.approver.firstName} (${step.status.toLowerCase()})`)
+                .map(
+                  (step) =>
+                    `${step.approver.firstName} ${step.approver.lastName} (${step.status.toLowerCase()})`,
+                )
                 .join(" → ")}
             </p>
           )}
+          <ClaimHistory events={claim.events ?? []} />
         </CardContent>
       </Card>
 

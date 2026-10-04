@@ -60,6 +60,11 @@ export interface ClaimEvent {
   actorId: string;
   reason: string | null;
   createdAt: string;
+  actor: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export interface Claim {
