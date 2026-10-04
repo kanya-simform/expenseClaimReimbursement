@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
+import { categoryLabelFor, formatCurrency, StatusBadge } from "@/components/claim-display";
 import { ClaimLineItemsForm } from "@/components/ClaimLineItemsForm";
 import { LineItemAttachments } from "@/components/LineItemAttachments";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -14,9 +16,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   createClaim,
   deleteClaim,
@@ -25,9 +34,15 @@ import {
   updateClaim,
 } from "@/lib/claims-api";
 import type { ClaimLineItemsFormValues } from "@/lib/claim-line-items-schema";
-import { CATEGORY_LABEL } from "@/lib/categories";
 import { getCsvImportErrorMessage, getErrorMessage } from "@/lib/get-error-message";
-import type { Claim, ClaimStatus, LineItem } from "@/lib/types";
+import type { Claim, ClaimStatus } from "@/lib/types";
+
+const CLAIM_STATUS_FILTER_LABEL: Record<ClaimStatus, string> = {
+  DRAFT: "Draft",
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+};
 
 const SAMPLE_CSV = `date,category,customCategory,amount,description,receipt
 2026-01-15,TRAVEL,,120.50,Flight to client site,flight-receipt.pdf
@@ -35,37 +50,6 @@ const SAMPLE_CSV = `date,category,customCategory,amount,description,receipt
 2026-01-17,MEALS,,25.75,Team lunch,
 `;
 const SAMPLE_CSV_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(SAMPLE_CSV)}`;
-
-const STATUS_LABEL: Record<ClaimStatus, string> = {
-  DRAFT: "Draft",
-  PENDING: "Pending",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-};
-
-function StatusBadge({ status }: Readonly<{ status: ClaimStatus }>) {
-  if (status === "APPROVED") {
-    return <Badge className="bg-emerald-600 text-white">{STATUS_LABEL[status]}</Badge>;
-  }
-  if (status === "REJECTED") {
-    return <Badge variant="destructive">{STATUS_LABEL[status]}</Badge>;
-  }
-  if (status === "PENDING") {
-    return <Badge variant="secondary">{STATUS_LABEL[status]}</Badge>;
-  }
-  return <Badge variant="outline">{STATUS_LABEL[status]}</Badge>;
-}
-
-function formatCurrency(value: string) {
-  return `$${Number(value).toFixed(2)}`;
-}
-
-function categoryLabelFor(item: Pick<LineItem, "category" | "customCategory">) {
-  if (item.category === "OTHER" && item.customCategory) {
-    return item.customCategory;
-  }
-  return CATEGORY_LABEL[item.category as keyof typeof CATEGORY_LABEL] ?? item.category;
-}
 
 function NewClaimCard() {
   const queryClient = useQueryClient();
@@ -367,21 +351,79 @@ function ClaimCard({ claim }: Readonly<{ claim: Claim }>) {
 }
 
 function ClaimsList() {
-  const { data: claims, isLoading } = useQuery({ queryKey: ["claims"], queryFn: listClaims });
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [status, setStatus] = useState<ClaimStatus | "ALL">("ALL");
+  const [page, setPage] = useState(1);
 
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading claims…</p>;
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  function handleStatusChange(value: ClaimStatus | "ALL") {
+    setStatus(value);
+    setPage(1);
   }
 
-  if (!claims || claims.length === 0) {
-    return <p className="text-sm text-muted-foreground">You haven't submitted any claims yet.</p>;
-  }
+  const { data, isLoading } = useQuery({
+    queryKey: ["claims", { search: debouncedSearch, status, page }],
+    queryFn: () =>
+      listClaims({
+        search: debouncedSearch || undefined,
+        status: status === "ALL" ? undefined : status,
+        page,
+      }),
+  });
+
+  const claims = data?.claims ?? [];
+  const hasFilters = debouncedSearch !== "" || status !== "ALL";
 
   return (
     <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          placeholder="Search description or category…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="max-w-xs"
+        />
+        <Select
+          value={status}
+          onValueChange={(value) => handleStatusChange(value as ClaimStatus | "ALL")}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All statuses</SelectItem>
+            {(["PENDING", "APPROVED", "REJECTED"] as const).map((value) => (
+              <SelectItem key={value} value={value}>
+                {CLAIM_STATUS_FILTER_LABEL[value]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading claims…</p>}
+
+      {!isLoading && claims.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          {hasFilters ? "No claims match your filters." : "You haven't submitted any claims yet."}
+        </p>
+      )}
+
       {claims.map((claim) => (
         <ClaimCard key={claim.id} claim={claim} />
       ))}
+
+      {data?.pagination && (
+        <PaginationControls pagination={data.pagination} onPageChange={setPage} />
+      )}
     </div>
   );
 }

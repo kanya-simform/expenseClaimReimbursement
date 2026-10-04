@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiClient } from "./api-client";
 import type { Role, User } from "./types";
 
@@ -16,6 +9,7 @@ export interface RegisterInput {
   password: string;
   confirmPassword: string;
   role: Role;
+  managerEmail?: string;
 }
 
 interface AuthContextValue {
@@ -57,10 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoading,
       login: async (email: string, password: string) => {
-        const res = await apiClient.post<{ accessToken: string; user: User }>(
-          "/auth/login",
-          { email, password },
-        );
+        const res = await apiClient.post<{ accessToken: string; user: User }>("/auth/login", {
+          email,
+          password,
+        });
         return applySession(res.data);
       },
       register: async (input: RegisterInput) => {

@@ -1,5 +1,5 @@
 import { apiClient } from "./api-client";
-import type { Attachment, Claim } from "./types";
+import type { Attachment, Claim, ClaimStatus, Pagination } from "./types";
 
 export interface LineItemInput {
   id?: string;
@@ -10,9 +10,20 @@ export interface LineItemInput {
   description: string;
 }
 
-export async function listClaims(): Promise<Claim[]> {
-  const res = await apiClient.get<{ claims: Claim[] }>("/claims");
-  return res.data.claims;
+export interface ListClaimsFilters {
+  status?: ClaimStatus;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function listClaims(
+  filters: ListClaimsFilters = {},
+): Promise<{ claims: Claim[]; pagination: Pagination }> {
+  const res = await apiClient.get<{ claims: Claim[]; pagination: Pagination }>("/claims", {
+    params: filters,
+  });
+  return res.data;
 }
 
 export async function createClaim(lineItems: LineItemInput[]): Promise<Claim> {

@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { isPasswordStrongEnough } from "../lib/password-strength";
 import * as authService from "../services/auth.service";
 
 const loginSchema = z.object({
@@ -9,15 +10,39 @@ const loginSchema = z.object({
 
 const registerSchema = z
   .object({
-    firstName: z.string().trim().min(1, "First name is required").max(50, "First name must be at most 50 characters"),
-    lastName: z.string().trim().min(1, "Last name is required").max(50, "Last name must be at most 50 characters"),
-    email: z.string().min(1, "Email is required").max(255, "Email must be at most 255 characters").email("Enter a valid email"),
+    firstName: z
+      .string()
+      .trim()
+      .min(1, "First name is required")
+      .max(50, "First name must be at most 50 characters"),
+    lastName: z
+      .string()
+      .trim()
+      .min(1, "Last name is required")
+      .max(50, "Last name must be at most 50 characters"),
+    email: z
+      .string()
+      .min(1, "Email is required")
+      .max(255, "Email must be at most 255 characters")
+      .email("Enter a valid email"),
     // bcrypt silently ignores bytes past 72 — cap here so that isn't a silent surprise.
-    password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password must be at most 72 characters"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .max(72, "Password must be at most 72 characters")
+      .refine(isPasswordStrongEnough, {
+        message: "Password is too weak — add length, mixed case, a number, or a symbol",
+      }),
     confirmPassword: z.string(),
     role: z.enum(["CLAIMANT", "APPROVER", "FINANCE"], {
       message: "Select a valid role",
     }),
+    managerEmail: z
+      .string()
+      .trim()
+      .email("Enter a valid manager email")
+      .optional()
+      .or(z.literal("")),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -31,8 +56,17 @@ export async function loginHandler(req: Request, res: Response) {
 }
 
 export async function registerHandler(req: Request, res: Response) {
-  const { firstName, lastName, email, password, role } = registerSchema.parse(req.body);
-  const result = await authService.register({ firstName, lastName, email, password, role });
+  const { firstName, lastName, email, password, role, managerEmail } = registerSchema.parse(
+    req.body,
+  );
+  const result = await authService.register({
+    firstName,
+    lastName,
+    email,
+    password,
+    role,
+    managerEmail: managerEmail || undefined,
+  });
   res.status(201).json(result);
 }
 
