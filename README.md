@@ -125,6 +125,10 @@ Runs against the database in your `backend/.env` — there's no separate test da
 mocking of Prisma, since the two hardest requirements (claim-total integrity, query-scoped
 approver authorization) are specifically about things a mock can't prove.
 
+#### Deployment
+Frontend - https://expense-claim-reimbursement-v5el.vercel.app/
+Backend - https://expenseclaimreimbursement.onrender.com
+
 ## Current status
 
 All of spec §3 (3.1 through 3.6) is implemented: claim submission with itemised line items,
