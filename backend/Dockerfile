@@ -25,5 +25,15 @@ RUN npm ci --omit=dev
 # needed at runtime.
 COPY --from=build /app/dist ./dist
 
+# Needed to run migrations from this image (see CMD below) — prisma.config.ts points at these
+# paths. The `prisma` CLI itself is already present even with --omit=dev (a transitive
+# dependency of @prisma/client in this version), so nothing else needs installing for this.
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+
 EXPOSE 4000
-CMD ["node", "dist/src/index.js"]
+# Runs migrations on every container start rather than as a separate pre-deploy step, since
+# that Render feature requires a paid plan. Safe to repeat — `migrate deploy` only applies
+# migrations that aren't already recorded as applied, so this is a no-op after the first
+# successful run (and free-tier cold-starts make "every start" the common case anyway).
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/index.js"]
