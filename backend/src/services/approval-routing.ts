@@ -2,10 +2,6 @@ import { Prisma } from "../../generated/prisma/client";
 import { SECOND_TIER_THRESHOLD } from "../constants/approvals";
 import { ValidationError } from "../errors";
 
-// Routing rule (spec §3.2): tier 1 is always the claimant's manager; tier 2 (only required
-// once the claim total reaches SECOND_TIER_THRESHOLD) is that manager's manager. Deterministic
-// per claimant — exactly one possible approver per tier — which is what makes "an approver
-// outside their queue" straightforward to refuse at the query level later.
 export async function resolveApprovalChain(
   tx: Prisma.TransactionClient,
   claimantId: string,

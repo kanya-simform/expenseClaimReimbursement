@@ -87,9 +87,6 @@ export async function importClaimHandler(req: Request, res: Response) {
   const rawRows = parseLineItemsCsv(csvFile.buffer);
   const { lineItems } = importClaimSchema.parse({ lineItems: rawRows });
 
-  // Fail before creating anything if a row references a receipt that wasn't actually
-  // uploaded — a claim silently missing a receipt it claims to have is worse than a
-  // rejected import.
   const receiptsByName = new Map(receiptFiles.map((file) => [file.originalname, file]));
   lineItems.forEach((item, index) => {
     if (item.receipt && !receiptsByName.has(item.receipt)) {
@@ -108,8 +105,6 @@ export async function importClaimHandler(req: Request, res: Response) {
     })),
   );
 
-  // Every line item here is brand new, so the backend's id-ordered claim.lineItems lines
-  // up one-to-one with the CSV's row order (see CLAIM_INCLUDE in claims.service.ts).
   await Promise.all(
     lineItems.map(async (item, index) => {
       if (!item.receipt) return;

@@ -25,7 +25,6 @@ const registerSchema = z
       .min(1, "Email is required")
       .max(255, "Email must be at most 255 characters")
       .email("Enter a valid email"),
-    // bcrypt silently ignores bytes past 72 — cap here so that isn't a silent surprise.
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")

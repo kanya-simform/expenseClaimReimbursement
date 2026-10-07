@@ -4,9 +4,6 @@ import { NotFoundError, ValidationError } from "../errors";
 import { buildPaginationMeta, resolvePagination, type PaginationInput } from "../lib/pagination";
 import { prisma } from "../lib/prisma";
 
-// Finance is read-only (spec §3.5) — this include carries enough to audit a claim (who
-// submitted it, its line items, the approval chain and history) without the per-attachment
-// detail the claimant/approver views need, since finance doesn't act on receipts.
 const FINANCE_CLAIM_INCLUDE = {
   claimant: { select: { id: true, firstName: true, lastName: true, email: true } },
   lineItems: { orderBy: { id: "asc" } },
@@ -60,12 +57,6 @@ export async function getClaimsForExport(status: ClaimStatus, from: Date, to: Da
     throw new ValidationError("'from' must be on or before 'to'");
   }
 
-  // "Within the period" is keyed off the line item dates the claimant actually entered when
-  // creating the claim — not a claim-level system timestamp (createdAt/updatedAt mean
-  // different things depending on status) — so the same rule applies regardless of status.
-  // A claim qualifies if ANY of its line items falls in range; once it qualifies, every line
-  // item is included (not just the in-range ones), so each row's claimTotal still matches the
-  // sum of that claim's visible rows.
   return prisma.claim.findMany({
     where: {
       status,

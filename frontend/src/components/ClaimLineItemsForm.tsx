@@ -95,8 +95,6 @@ export function ClaimLineItemsForm({
       return;
     }
 
-    // Only rows that didn't already have a server id are eligible for a staged receipt —
-    // existing rows manage attachments through their own always-available upload control.
     const preExistingIds = new Set(
       (defaultLineItems ?? []).flatMap((item) => (item.id ? [item.id] : [])),
     );
@@ -109,8 +107,6 @@ export function ClaimLineItemsForm({
       .map((entry) => entry.file);
 
     if (stagedForNewRows.some((file) => file)) {
-      // The backend returns line items ordered by id (creation order), so pairing the
-      // newly created ones with the staged files in submission order is reliable.
       const newServerLineItems = claim.lineItems.filter((item) => !preExistingIds.has(item.id));
 
       try {
@@ -154,7 +150,10 @@ export function ClaimLineItemsForm({
           const isNewRow = !lineItems[index]?.id;
           const stagedFile = stagedFiles[field.id];
           return (
-            <div key={field.id} className="grid grid-cols-12 items-start gap-2 rounded-lg border p-3">
+            <div
+              key={field.id}
+              className="grid grid-cols-12 items-start gap-2 rounded-lg border p-3"
+            >
               <div className="col-span-3 grid gap-1">
                 <Label htmlFor={`lineItems.${index}.date`}>
                   Date
@@ -326,7 +325,12 @@ export function ClaimLineItemsForm({
         })}
       </div>
 
-      <Button type="button" variant="outline" className="w-fit" onClick={() => append(emptyLineItem())}>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-fit"
+        onClick={() => append(emptyLineItem())}
+      >
         <Plus className="size-4" />
         Add line item
       </Button>

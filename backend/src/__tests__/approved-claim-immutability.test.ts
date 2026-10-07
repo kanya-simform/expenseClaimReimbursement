@@ -2,10 +2,6 @@ import request from "supertest";
 import { prisma } from "../lib/prisma";
 import { app, registerUser } from "./test-helpers";
 
-// Spec §6: "Trying to edit an already-approved claim... should come back as a clear, specific
-// failure — not a silent no-op and not a generic error." Exercised here through the ordinary
-// API (not raw SQL — see claim-total-integrity.test.ts for the DB-trigger-level version of
-// this same invariant).
 describe("approved-claim immutability (via the API)", () => {
   afterAll(async () => {
     await prisma.$disconnect();
@@ -50,7 +46,6 @@ describe("approved-claim immutability (via the API)", () => {
     expect(res.body.error.message).toContain("approved");
     expect(res.body.error.message).toContain(claimId);
 
-    // Confirm the edit genuinely had no effect — not a silent no-op that still returned 200.
     const reloaded = await prisma.claim.findUniqueOrThrow({ where: { id: claimId } });
     expect(Number(reloaded.totalAmount)).toBe(25);
   });

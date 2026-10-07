@@ -32,8 +32,6 @@ const COLUMNS = [
   "description",
 ] as const;
 
-// One row per line item, not per claim — bookkeeping needs the itemised breakdown, and the
-// claim-level fields (id, claimant, total, status) just repeat across a claim's rows.
 export function buildClaimsExportCsv(claims: ExportableClaim[], timeZone: string): string {
   const rows = claims.flatMap((claim) =>
     claim.lineItems.map((item) => ({

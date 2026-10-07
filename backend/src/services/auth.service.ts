@@ -58,7 +58,6 @@ export async function register(input: RegisterInput) {
     if (!manager) {
       throw new ValidationError("No account exists with that manager email");
     }
-    // Only an APPROVER can sit in the approval chain — see approval-routing.ts (spec §3.2).
     if (manager.role !== "APPROVER") {
       throw new ValidationError("The manager account must have the Approver role");
     }

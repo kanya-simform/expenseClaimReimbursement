@@ -65,7 +65,6 @@ function NewClaimCard() {
       createClaim(lineItems.map((item) => ({ ...item, amount: Number(item.amount) }))),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["claims"] });
-      // Force the form back to a single blank row after a successful submit.
       setFormKey((key) => key + 1);
     },
   });

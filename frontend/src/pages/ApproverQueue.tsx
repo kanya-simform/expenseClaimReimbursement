@@ -47,10 +47,6 @@ function ApprovalClaimCard({ claim, view }: Readonly<{ claim: Claim; view: View 
 
   const myStep = claim.approvalSteps?.find((step) => step.approverId === user?.id);
 
-  // A resubmitted or mid-chain-edited claim gets a fresh ApprovalStep chain (see routeClaim
-  // in claims.service.ts), which wipes any prior decision from `approvalSteps` — so for the
-  // "decided" tab, fall back to the permanent ClaimEvent record of this approver's last
-  // decision when the current step doesn't reflect one (e.g. it's back to PENDING).
   const myDecision =
     myStep && myStep.status !== "PENDING"
       ? { status: myStep.status, reason: myStep.reason }
