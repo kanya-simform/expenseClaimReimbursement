@@ -43,7 +43,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Resource not found" } });
     }
   }
-
   if (err instanceof Prisma.PrismaClientUnknownRequestError) {
     const match = TRIGGER_ERROR_PATTERN.exec(err.message);
     if (match) {
@@ -51,7 +50,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       return res.status(409).json({ error: { code: "CONFLICT", message: triggerMessage } });
     }
   }
-
   logger.error({ err, path: req.path }, "Unhandled error");
   res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Something went wrong" } });
 }

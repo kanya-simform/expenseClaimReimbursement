@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { apiClient } from "./api-client";
+import { apiClient, clearSession, storeSession, type Session } from "./api-client";
 import type { Role, User } from "./types";
 
 export interface RegisterInput {
@@ -17,7 +17,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (input: RegisterInput) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -27,22 +27,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
+    function handleSessionExpired() {
+      setUser(null);
+    }
+    window.addEventListener("auth:session-expired", handleSessionExpired);
+
+    if (!localStorage.getItem("refreshToken")) {
+      clearSession();
       setIsLoading(false);
-      return;
+    } else {
+      apiClient
+        .get<{ user: User }>("/auth/me")
+        .then((res) => setUser(res.data.user))
+        .catch(() => clearSession())
+        .finally(() => setIsLoading(false));
     }
 
-    apiClient
-      .get<{ user: User }>("/auth/me")
-      .then((res) => setUser(res.data.user))
-      .catch(() => localStorage.removeItem("accessToken"))
-      .finally(() => setIsLoading(false));
+    return () => window.removeEventListener("auth:session-expired", handleSessionExpired);
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
-    function applySession(data: { accessToken: string; user: User }) {
-      localStorage.setItem("accessToken", data.accessToken);
+    function applySession(data: Session) {
+      storeSession(data);
       setUser(data.user);
       return data.user;
     }
@@ -51,22 +57,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoading,
       login: async (email: string, password: string) => {
-        const res = await apiClient.post<{ accessToken: string; user: User }>("/auth/login", {
+        const res = await apiClient.post<Session>("/auth/login", {
           email,
           password,
         });
         return applySession(res.data);
       },
       register: async (input: RegisterInput) => {
-        const res = await apiClient.post<{ accessToken: string; user: User }>(
-          "/auth/register",
-          input,
-        );
+        const res = await apiClient.post<Session>("/auth/register", input);
         return applySession(res.data);
       },
-      logout: () => {
-        localStorage.removeItem("accessToken");
+      logout: async () => {
+        const refreshToken = localStorage.getItem("refreshToken");
+        clearSession();
         setUser(null);
+        if (refreshToken) {
+          await apiClient.post("/auth/logout", { refreshToken }).catch(() => undefined);
+        }
       },
     };
   }, [user, isLoading]);

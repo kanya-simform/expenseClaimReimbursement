@@ -8,6 +8,10 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});
+
 const registerSchema = z
   .object({
     firstName: z
@@ -72,4 +76,16 @@ export async function registerHandler(req: Request, res: Response) {
 export async function meHandler(req: Request, res: Response) {
   const user = await authService.getProfile(req.user!.id);
   res.json({ user });
+}
+
+export async function refreshHandler(req: Request, res: Response) {
+  const { refreshToken } = refreshSchema.parse(req.body);
+  const result = await authService.refresh(refreshToken);
+  res.json(result);
+}
+
+export async function logoutHandler(req: Request, res: Response) {
+  const { refreshToken } = refreshSchema.parse(req.body);
+  await authService.logout(refreshToken);
+  res.status(204).end();
 }
