@@ -1,6 +1,6 @@
 import type { ClaimStatus } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
-import { NotFoundError, ValidationError } from "../errors";
+import { ValidationError } from "../errors";
 import { buildPaginationMeta, resolvePagination, type PaginationInput } from "../lib/pagination";
 import { prisma } from "../lib/prisma";
 
@@ -65,17 +65,4 @@ export async function getClaimsForExport(status: ClaimStatus, from: Date, to: Da
     include: FINANCE_CLAIM_INCLUDE,
     orderBy: { createdAt: "asc" },
   });
-}
-
-export async function getClaimForFinance(claimId: string) {
-  const claim = await prisma.claim.findUnique({
-    where: { id: claimId },
-    include: FINANCE_CLAIM_INCLUDE,
-  });
-
-  if (!claim) {
-    throw new NotFoundError("Claim not found");
-  }
-
-  return claim;
 }

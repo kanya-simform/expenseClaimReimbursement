@@ -42,12 +42,6 @@ export async function listClaimsHandler(req: Request, res: Response) {
   res.json({ claims, pagination });
 }
 
-export async function getClaimHandler(req: Request, res: Response) {
-  const id = z.string().parse(req.params.id);
-  const claim = await financeService.getClaimForFinance(id);
-  res.json({ claim });
-}
-
 export async function exportCsvHandler(req: Request, res: Response) {
   const { status, from, to } = exportQuerySchema.parse(req.query);
   const timeZone = resolveTimeZone(req.headers["x-timezone"]);
