@@ -132,12 +132,6 @@ export async function listClaimsHandler(req: Request, res: Response) {
   res.json({ claims, pagination });
 }
 
-export async function getClaimHandler(req: Request, res: Response) {
-  const id = z.string().parse(req.params.id);
-  const claim = await claimsService.getClaimForClaimant(id, req.user!.id);
-  res.json({ claim });
-}
-
 export async function updateClaimHandler(req: Request, res: Response) {
   const id = z.string().parse(req.params.id);
   const { lineItems } = updateClaimSchema.parse(req.body);

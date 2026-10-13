@@ -32,7 +32,7 @@ async function routeClaim(tx: Prisma.TransactionClient, claimId: string, claiman
   await tx.claim.update({ where: { id: claimId }, data: { currentStep: 0, status: "PENDING" } });
 }
 
-export interface CreateLineItemInput {
+interface CreateLineItemInput {
   date: Date;
   category: string;
   customCategory: string | null;
@@ -40,7 +40,7 @@ export interface CreateLineItemInput {
   description: string;
 }
 
-export interface UpdateLineItemInput extends CreateLineItemInput {
+interface UpdateLineItemInput extends CreateLineItemInput {
   id?: string;
 }
 
@@ -201,7 +201,7 @@ export async function deleteClaim(claimantId: string, claimId: string) {
   return claim;
 }
 
-export interface AddAttachmentInput {
+interface AddAttachmentInput {
   filename: string;
   filePath: string;
   mimeType: string;

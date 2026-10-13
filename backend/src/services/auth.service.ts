@@ -105,7 +105,7 @@ export async function login(email: string, password: string) {
   return startSession(user);
 }
 
-export interface RegisterInput {
+interface RegisterInput {
   firstName: string;
   lastName: string;
   email: string;

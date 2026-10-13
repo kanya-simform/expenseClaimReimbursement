@@ -13,7 +13,6 @@ import {
   deleteAttachmentHandler,
   deleteClaimHandler,
   downloadAttachmentHandler,
-  getClaimHandler,
   importClaimHandler,
   listClaimsHandler,
   updateClaimHandler,
@@ -61,7 +60,6 @@ claimsRouter.post(
   importClaimHandler,
 );
 claimsRouter.get("/", listClaimsHandler);
-claimsRouter.get("/:id", getClaimHandler);
 claimsRouter.put("/:id", updateClaimHandler);
 claimsRouter.delete("/:id", deleteClaimHandler);
 

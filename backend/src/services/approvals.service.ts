@@ -16,7 +16,7 @@ const APPROVAL_CLAIM_INCLUDE = {
   },
 } as const;
 
-export interface QueueFilters extends PaginationInput {
+interface QueueFilters extends PaginationInput {
   decided?: boolean;
   status?: "APPROVED" | "REJECTED";
   from?: Date;
@@ -142,7 +142,7 @@ export async function listQueueForApprover(approverId: string, filters: QueueFil
   return { claims: ordered, pagination: buildPaginationMeta(total, page, pageSize) };
 }
 
-export async function getClaimForApprover(claimId: string, approverId: string) {
+async function getClaimForApprover(claimId: string, approverId: string) {
   const claim = await prisma.claim.findUnique({
     where: { id: claimId },
     include: APPROVAL_CLAIM_INCLUDE,
@@ -184,7 +184,7 @@ export async function getAttachmentForApprover(
   return attachment;
 }
 
-export interface DecisionInput {
+interface DecisionInput {
   action: "APPROVE" | "REJECT";
   reason?: string;
 }
