@@ -4,7 +4,6 @@ import type { UserRole } from "../../generated/prisma/client";
 
 export const app = createApp();
 
-// A fixed strong password satisfying both the length and strength checks (auth.controller.ts).
 const TEST_PASSWORD = "Str0ng!TestPass9";
 
 let counter = 0;

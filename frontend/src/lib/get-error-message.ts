@@ -13,9 +13,6 @@ interface ZodIssueLike {
   message?: string;
 }
 
-// Validation errors from /claims/import carry paths like ["lineItems", 2, "amount"] — index 2
-// is the CSV's 3rd data row (not counting the header). Render that as "Row 3: ..." instead of
-// the raw path, since there's no form field for the user to look at.
 export function getCsvImportErrorMessage(
   error: unknown,
   fallback = "Could not import the CSV",

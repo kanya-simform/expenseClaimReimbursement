@@ -6,7 +6,7 @@ export interface PaginationInput {
   pageSize?: number;
 }
 
-export interface PaginationMeta {
+interface PaginationMeta {
   page: number;
   pageSize: number;
   total: number;

@@ -8,6 +8,10 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});
+
 const registerSchema = z
   .object({
     firstName: z
@@ -25,7 +29,6 @@ const registerSchema = z
       .min(1, "Email is required")
       .max(255, "Email must be at most 255 characters")
       .email("Enter a valid email"),
-    // bcrypt silently ignores bytes past 72 — cap here so that isn't a silent surprise.
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -73,4 +76,16 @@ export async function registerHandler(req: Request, res: Response) {
 export async function meHandler(req: Request, res: Response) {
   const user = await authService.getProfile(req.user!.id);
   res.json({ user });
+}
+
+export async function refreshHandler(req: Request, res: Response) {
+  const { refreshToken } = refreshSchema.parse(req.body);
+  const result = await authService.refresh(refreshToken);
+  res.json(result);
+}
+
+export async function logoutHandler(req: Request, res: Response) {
+  const { refreshToken } = refreshSchema.parse(req.body);
+  await authService.logout(refreshToken);
+  res.status(204).end();
 }

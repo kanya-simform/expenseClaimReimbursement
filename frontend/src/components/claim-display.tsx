@@ -41,10 +41,6 @@ const EVENT_VERB: Record<ClaimEventType, string> = {
   EDITED: "edited",
 };
 
-// Spec §6: "submission, approval, and rejection should each leave a structured trace — this
-// is the audit trail finance will actually ask for when a claim is disputed." The data
-// (ClaimEvent rows) exists regardless of whether this renders; this is just the one place
-// that actually surfaces it to a human, shared across the claimant/approver/finance views.
 export function ClaimHistory({ events }: Readonly<{ events: ClaimEvent[] }>) {
   if (events.length === 0) return null;
 

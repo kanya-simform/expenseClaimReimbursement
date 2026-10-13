@@ -1,8 +1,5 @@
 const DEFAULT_TIME_ZONE = "UTC";
 
-// CSV generation happens server-side with no access to the browser's timezone, so the
-// frontend sends its own IANA zone (e.g. "Asia/Kolkata") in a request header instead.
-// Falls back to UTC for a missing/malformed header rather than failing the export over it.
 export function resolveTimeZone(headerValue: string | string[] | undefined): string {
   const candidate = Array.isArray(headerValue) ? headerValue[0] : headerValue;
   if (!candidate) return DEFAULT_TIME_ZONE;

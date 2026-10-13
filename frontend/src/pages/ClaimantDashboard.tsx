@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Upload } from "lucide-react";
+import { AlertCircle, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
@@ -65,7 +65,6 @@ function NewClaimCard() {
       createClaim(lineItems.map((item) => ({ ...item, amount: Number(item.amount) }))),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["claims"] });
-      // Force the form back to a single blank row after a successful submit.
       setFormKey((key) => key + 1);
     },
   });
@@ -87,6 +86,8 @@ function NewClaimCard() {
     </Card>
   );
 }
+
+const MAX_IMPORT_RECEIPTS = 20;
 
 function ImportCsvCard() {
   const queryClient = useQueryClient();
@@ -120,7 +121,24 @@ function ImportCsvCard() {
 
   function handleReceiptsChange(event: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
-    setReceiptFiles(Array.from(event.target.files ?? []));
+    const picked = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    const names = new Set(receiptFiles.map((file) => file.name));
+    const added = picked.filter((file) => !names.has(file.name));
+    const room = MAX_IMPORT_RECEIPTS - receiptFiles.length;
+
+    if (added.length > room) {
+      setError(
+        `You can attach up to ${MAX_IMPORT_RECEIPTS} receipts per import. Only the first ${room} new file(s) were added.`,
+      );
+    }
+    setReceiptFiles([...receiptFiles, ...added.slice(0, room)]);
+  }
+
+  function handleRemoveReceipt(name: string) {
+    setError(null);
+    setReceiptFiles((prev) => prev.filter((file) => file.name !== name));
   }
 
   function handleImport() {
@@ -178,7 +196,7 @@ function ImportCsvCard() {
             <Button
               type="button"
               variant="outline"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || receiptFiles.length >= MAX_IMPORT_RECEIPTS}
               onClick={() => receiptsInputRef.current?.click()}
             >
               <Upload className="size-4" />
@@ -186,10 +204,32 @@ function ImportCsvCard() {
             </Button>
             <span className="text-sm text-muted-foreground">
               {receiptFiles.length > 0
-                ? `${receiptFiles.length} file(s) selected`
+                ? `${receiptFiles.length} of ${MAX_IMPORT_RECEIPTS} receipts selected`
                 : "No receipts selected (optional)"}
             </span>
           </div>
+          {receiptFiles.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {receiptFiles.map((file) => (
+                <li
+                  key={file.name}
+                  className="inline-flex items-center gap-1 rounded-full border bg-muted/50 py-1 pr-1 pl-2 text-xs"
+                >
+                  <span className="max-w-48 truncate">{file.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Remove ${file.name}`}
+                    disabled={mutation.isPending}
+                    onClick={() => handleRemoveReceipt(file.name)}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Button type="button" disabled={!csvFile || mutation.isPending} onClick={handleImport}>

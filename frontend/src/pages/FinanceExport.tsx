@@ -39,8 +39,6 @@ function ExportCard() {
   const [to, setTo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Mirrors the backend's own check (finance.service.ts's getClaimsForExport) so the user
-  // sees this immediately instead of round-tripping to the server to find out.
   const dateRangeError = from && to && from > to ? "'From' must be on or before 'to'" : null;
 
   const mutation = useMutation({

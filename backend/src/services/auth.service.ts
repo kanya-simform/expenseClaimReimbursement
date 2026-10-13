@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { createHash, randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { ConflictError, NotFoundError, UnauthenticatedError, ValidationError } from "../errors";
@@ -24,7 +25,74 @@ function toPublicUser(user: {
 }
 
 function signAccessToken(user: { id: string; role: UserRole }) {
-  return jwt.sign({ sub: user.id, role: user.role }, env.JWT_SECRET, { expiresIn: "8h" });
+  return jwt.sign({ sub: user.id, role: user.role }, env.JWT_SECRET, {
+    expiresIn: env.ACCESS_TOKEN_TTL as jwt.SignOptions["expiresIn"],
+  });
+}
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+async function issueRefreshToken(userId: string) {
+  const token = randomBytes(48).toString("base64url");
+  await prisma.refreshToken.create({
+    data: {
+      userId,
+      tokenHash: hashToken(token),
+      expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000),
+    },
+  });
+  return token;
+}
+
+async function startSession(user: Parameters<typeof toPublicUser>[0]) {
+  return {
+    accessToken: signAccessToken(user),
+    refreshToken: await issueRefreshToken(user.id),
+    user: toPublicUser(user),
+  };
+}
+
+export async function refresh(refreshToken: string) {
+  const tokenHash = hashToken(refreshToken);
+  const stored = await prisma.refreshToken.findUnique({
+    where: { tokenHash },
+    include: { user: true },
+  });
+
+  if (!stored) {
+    throw new UnauthenticatedError("Invalid refresh token");
+  }
+
+  if (stored.revokedAt) {
+    await prisma.refreshToken.updateMany({
+      where: { userId: stored.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    throw new UnauthenticatedError("Refresh token has been revoked");
+  }
+
+  if (stored.expiresAt <= new Date()) {
+    throw new UnauthenticatedError("Refresh token has expired");
+  }
+
+  const claimed = await prisma.refreshToken.updateMany({
+    where: { id: stored.id, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  if (claimed.count === 0) {
+    throw new UnauthenticatedError("Refresh token has been revoked");
+  }
+
+  return startSession(stored.user);
+}
+
+export async function logout(refreshToken: string) {
+  await prisma.refreshToken.updateMany({
+    where: { tokenHash: hashToken(refreshToken), revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
 }
 
 export async function login(email: string, password: string) {
@@ -34,10 +102,10 @@ export async function login(email: string, password: string) {
     throw new UnauthenticatedError("Invalid email or password");
   }
 
-  return { accessToken: signAccessToken(user), user: toPublicUser(user) };
+  return startSession(user);
 }
 
-export interface RegisterInput {
+interface RegisterInput {
   firstName: string;
   lastName: string;
   email: string;
@@ -58,7 +126,6 @@ export async function register(input: RegisterInput) {
     if (!manager) {
       throw new ValidationError("No account exists with that manager email");
     }
-    // Only an APPROVER can sit in the approval chain — see approval-routing.ts (spec §3.2).
     if (manager.role !== "APPROVER") {
       throw new ValidationError("The manager account must have the Approver role");
     }
@@ -78,7 +145,7 @@ export async function register(input: RegisterInput) {
     },
   });
 
-  return { accessToken: signAccessToken(user), user: toPublicUser(user) };
+  return startSession(user);
 }
 
 export async function getProfile(userId: string) {

@@ -6,5 +6,3 @@ export const EXPENSE_CATEGORIES = [
   "SOFTWARE",
   "OTHER",
 ] as const;
-
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];

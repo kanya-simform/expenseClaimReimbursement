@@ -5,12 +5,6 @@ import { Prisma } from "../../generated/prisma/client";
 import { AppError } from "../errors";
 import { logger } from "../lib/logger";
 
-// DB trigger exceptions (RAISE EXCEPTION ... USING ERRCODE = '22000', see
-// prisma/migrations/20260921080405_add_claim_integrity_triggers/migration.sql) don't come
-// back as a typed Prisma error — the query engine surfaces them as a
-// PrismaClientUnknownRequestError whose .message embeds the raw Postgres error as a
-// Rust-debug-formatted string, e.g.:
-//   PostgresError { code: "22000", message: "Claim <id> is approved and is read-only", ... }
 const TRIGGER_ERROR_PATTERN = /PostgresError \{ code: "([^"]+)", message: "([^"]*)"/;
 
 export function notFoundHandler(req: Request, res: Response) {
@@ -35,8 +29,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   if (err instanceof multer.MulterError) {
-    const message =
-      err.code === "LIMIT_FILE_SIZE" ? "File is too large (max 5MB)" : err.message;
+    const message = err.code === "LIMIT_FILE_SIZE" ? "File is too large (max 5MB)" : err.message;
     return res.status(400).json({ error: { code: "VALIDATION_ERROR", message } });
   }
 
@@ -50,7 +43,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       return res.status(404).json({ error: { code: "NOT_FOUND", message: "Resource not found" } });
     }
   }
-
   if (err instanceof Prisma.PrismaClientUnknownRequestError) {
     const match = TRIGGER_ERROR_PATTERN.exec(err.message);
     if (match) {
@@ -58,7 +50,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
       return res.status(409).json({ error: { code: "CONFLICT", message: triggerMessage } });
     }
   }
-
   logger.error({ err, path: req.path }, "Unhandled error");
   res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Something went wrong" } });
 }

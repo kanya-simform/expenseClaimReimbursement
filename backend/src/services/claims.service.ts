@@ -5,9 +5,6 @@ import { ConflictError, NotFoundError } from "../errors";
 import { buildPaginationMeta, resolvePagination, type PaginationInput } from "../lib/pagination";
 import { prisma } from "../lib/prisma";
 
-// Ordering by id (a k-sortable cuid) rather than leaving it to incidental Postgres row
-// order — the frontend matches newly staged receipt uploads to newly created line items
-// by creation order, which needs to be deterministic.
 const CLAIM_INCLUDE = {
   lineItems: { include: { attachments: true }, orderBy: { id: "asc" } },
   approvalSteps: {
@@ -35,7 +32,7 @@ async function routeClaim(tx: Prisma.TransactionClient, claimId: string, claiman
   await tx.claim.update({ where: { id: claimId }, data: { currentStep: 0, status: "PENDING" } });
 }
 
-export interface CreateLineItemInput {
+interface CreateLineItemInput {
   date: Date;
   category: string;
   customCategory: string | null;
@@ -43,14 +40,11 @@ export interface CreateLineItemInput {
   description: string;
 }
 
-export interface UpdateLineItemInput extends CreateLineItemInput {
+interface UpdateLineItemInput extends CreateLineItemInput {
   id?: string;
 }
 
 export async function createClaim(claimantId: string, lineItems: CreateLineItemInput[]) {
-  // Routing and the claim insert happen in one transaction: if the claimant's manager chain
-  // can't support the computed total (spec §3.2), the whole claim is rolled back rather than
-  // left behind with no approvers assigned.
   const claimId = await prisma.$transaction(async (tx) => {
     const created = await tx.claim.create({
       data: {
@@ -131,9 +125,6 @@ export async function updateClaim(
 ) {
   const existing = await getClaimForClaimant(claimId, claimantId);
 
-  // Belt-and-suspenders: the DB trigger already refuses writes to an approved claim's
-  // line items, but checking here first avoids attempting a doomed multi-statement diff
-  // and gives the same clear, specific failure a beat earlier.
   if (existing.status === "APPROVED") {
     throw new ConflictError(`Claim ${claimId} is approved and is read-only`);
   }
@@ -153,10 +144,6 @@ export async function updateClaim(
   );
   const toCreate = lineItems.filter((item) => !item.id);
 
-  // An edit to a claim whose approval chain has already started (spec §3.2's "amount changes
-  // mid-chain" case) discards the whole chain and recomputes it from scratch against the new
-  // total — any partial approval at the old amount doesn't guarantee validity at the new one.
-  // The same reset also covers resubmission after rejection (spec §3.3).
   await prisma.$transaction(async (tx) => {
     if (idsToDelete.length > 0) {
       await tx.lineItem.deleteMany({ where: { id: { in: idsToDelete }, claimId } });
@@ -209,14 +196,12 @@ export async function deleteClaim(claimantId: string, claimId: string) {
     throw new ConflictError(`Only pending claims can be deleted`);
   }
 
-  // Line items/attachments cascade at the DB level (onDelete: Cascade in schema.prisma) —
-  // the caller still needs the pre-delete claim back to clean up attachment files on disk.
   await prisma.claim.delete({ where: { id: claimId } });
 
   return claim;
 }
 
-export interface AddAttachmentInput {
+interface AddAttachmentInput {
   filename: string;
   filePath: string;
   mimeType: string;

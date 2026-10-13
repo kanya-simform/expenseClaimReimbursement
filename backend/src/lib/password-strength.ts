@@ -1,6 +1,3 @@
-// Mirrors frontend/src/lib/password-strength.ts's scoring — kept in sync by hand since the
-// two apps are separate packages. Enforced here too so a direct API call can't bypass the
-// frontend's strength meter and register a weak password.
 const MIN_ACCEPTABLE_SCORE = 3;
 
 function scorePassword(password: string): number {

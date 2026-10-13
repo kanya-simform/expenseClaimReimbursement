@@ -2,7 +2,6 @@ import request from "supertest";
 import { prisma } from "../lib/prisma";
 import { app, registerUser } from "./test-helpers";
 
-// Spec §6: "Every route requires a real, authenticated user."
 describe("authentication is required on every protected route", () => {
   afterAll(async () => {
     await prisma.$disconnect();
@@ -32,7 +31,6 @@ describe("authentication is required on every protected route", () => {
 
   it("refuses a well-formed but tampered/invalid-signature token", async () => {
     const claimant = await registerUser("CLAIMANT");
-    // Flip the last character of the signature segment — same shape, invalid signature.
     const parts = claimant.token.split(".");
     const tamperedSignature = parts[2].slice(0, -1) + (parts[2].endsWith("A") ? "B" : "A");
     const tamperedToken = [parts[0], parts[1], tamperedSignature].join(".");
@@ -45,13 +43,11 @@ describe("authentication is required on every protected route", () => {
   });
 
   it("login and register themselves do not require authentication", async () => {
-    // Sanity check the inverse — these must stay reachable without a token, or no one could
-    // ever get one in the first place.
     const res = await request(app).post("/api/auth/login").send({
       email: "nobody@example.com",
       password: "whatever",
     });
-    expect(res.status).toBe(401); // wrong credentials, not 401-for-missing-auth
+    expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("UNAUTHENTICATED");
   });
 

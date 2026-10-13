@@ -1,7 +1,7 @@
 import { parse } from "csv-parse/sync";
 import { ValidationError } from "../errors";
 
-export interface RawLineItemRow {
+interface RawLineItemRow {
   date?: string;
   category?: string;
   customCategory?: string;

@@ -3,11 +3,6 @@ import request from "supertest";
 import { prisma } from "../lib/prisma";
 import { app, registerUser } from "./test-helpers";
 
-// Spec §6: "The claim total needs to be provably impossible to desynchronise from its line
-// items. Write a test that tries to leave it mismatched and confirm it can't." These attack
-// the database directly with $executeRawUnsafe, bypassing the application (and Prisma's own
-// query builder) entirely — the trigger in migration 20260921080405 is what has to hold, not
-// any service-layer check.
 describe("claim total integrity", () => {
   afterAll(async () => {
     await prisma.$disconnect();

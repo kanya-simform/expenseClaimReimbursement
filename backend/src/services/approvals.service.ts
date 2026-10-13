@@ -16,7 +16,7 @@ const APPROVAL_CLAIM_INCLUDE = {
   },
 } as const;
 
-export interface QueueFilters extends PaginationInput {
+interface QueueFilters extends PaginationInput {
   decided?: boolean;
   status?: "APPROVED" | "REJECTED";
   from?: Date;
@@ -39,9 +39,6 @@ export async function listQueueForApprover(approverId: string, filters: QueueFil
   };
 
   if (filters.decided) {
-    // Matches via ApprovalStep (the current chain) OR ClaimEvent (every decision this
-    // approver has ever made on the claim, including ones a later edit's chain reset has
-    // since deleted from ApprovalStep — see routeClaim in claims.service.ts).
     const decidedCondition: Prisma.ClaimWhereInput = {
       OR: [
         { approvalSteps: { some: { approverId, status: filters.status ?? { not: "PENDING" } } } },
@@ -90,10 +87,6 @@ export async function listQueueForApprover(approverId: string, filters: QueueFil
     return { claims, pagination: buildPaginationMeta(total, page, pageSize) };
   }
 
-  // "Currently routed to me" can't be expressed as a plain Prisma relation filter — it needs
-  // to compare the step's own sequence against its *parent* claim's currentStep, which Prisma
-  // has no way to reference across a relation. Pushing that comparison into SQL keeps this to
-  // one indexed query instead of pulling every claim into memory to filter in JS (spec §6).
   const conditions: Prisma.Sql[] = [
     Prisma.sql`c.status = 'PENDING'`,
     Prisma.sql`s.approver_id = ${approverId}`,
@@ -143,14 +136,13 @@ export async function listQueueForApprover(approverId: string, filters: QueueFil
     include: APPROVAL_CLAIM_INCLUDE,
   });
 
-  // Preserve the SQL query's ordering (findMany with `id: { in }` does not).
   const order = new Map(activeClaims.map((row, index) => [row.id, index]));
   const ordered = claims.sort((a, b) => order.get(a.id)! - order.get(b.id)!);
 
   return { claims: ordered, pagination: buildPaginationMeta(total, page, pageSize) };
 }
 
-export async function getClaimForApprover(claimId: string, approverId: string) {
+async function getClaimForApprover(claimId: string, approverId: string) {
   const claim = await prisma.claim.findUnique({
     where: { id: claimId },
     include: APPROVAL_CLAIM_INCLUDE,
@@ -168,8 +160,6 @@ export async function getClaimForApprover(claimId: string, approverId: string) {
       event.actorId === approverId && (event.type === "APPROVED" || event.type === "REJECTED"),
   );
 
-  // Same 404, same message, whether this approver has no involvement at all or has one that
-  // just isn't active yet — the response can't be used to probe for a future assignment.
   if (!isMyActiveTurn && !stepAlreadyDecided && !previouslyDecided) {
     throw new NotFoundError("Claim not found");
   }
@@ -194,7 +184,7 @@ export async function getAttachmentForApprover(
   return attachment;
 }
 
-export interface DecisionInput {
+interface DecisionInput {
   action: "APPROVE" | "REJECT";
   reason?: string;
 }
@@ -252,9 +242,6 @@ export async function decideOnClaim(claimId: string, approverId: string, input: 
           ...(isFinalStep ? { status: "APPROVED" as const } : {}),
         },
       }),
-      // Logged for every tier, not just the final one — an edit mid-chain (routeClaim)
-      // deletes ApprovalStep rows to recompute the chain, so this is the only record of an
-      // intermediate approval that survives that reset (spec §6's "structured trace").
       prisma.claimEvent.create({
         data: {
           claimId,
