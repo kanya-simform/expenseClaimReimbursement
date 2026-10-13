@@ -53,12 +53,6 @@ export async function listQueueHandler(req: Request, res: Response) {
   res.json({ claims, pagination });
 }
 
-export async function getQueuedClaimHandler(req: Request, res: Response) {
-  const id = z.string().parse(req.params.id);
-  const claim = await approvalsService.getClaimForApprover(id, req.user!.id);
-  res.json({ claim });
-}
-
 export async function decideHandler(req: Request, res: Response) {
   const id = z.string().parse(req.params.id);
   const input = decisionSchema.parse(req.body);

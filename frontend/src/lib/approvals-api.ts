@@ -29,11 +29,6 @@ export async function listApprovalQueue(
   return res.data;
 }
 
-export async function getQueuedClaim(claimId: string): Promise<Claim> {
-  const res = await apiClient.get<{ claim: Claim }>(`/approvals/${claimId}`);
-  return res.data.claim;
-}
-
 export async function decideOnClaim(
   claimId: string,
   action: "APPROVE" | "REJECT",
