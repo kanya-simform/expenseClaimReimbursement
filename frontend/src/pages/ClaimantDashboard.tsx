@@ -119,7 +119,12 @@ function ImportCsvCard() {
 
   function handleReceiptsChange(event: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
-    setReceiptFiles(Array.from(event.target.files ?? []));
+    const picked = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    setReceiptFiles((prev) => {
+      const names = new Set(prev.map((file) => file.name));
+      return [...prev, ...picked.filter((file) => !names.has(file.name))];
+    });
   }
 
   function handleImport() {
