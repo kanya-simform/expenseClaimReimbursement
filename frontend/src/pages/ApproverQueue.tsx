@@ -39,6 +39,14 @@ import type { Claim } from "@/lib/types";
 type View = "pending" | "decided";
 type DecidedStatusFilter = "ALL" | "APPROVED" | "REJECTED";
 
+function startOfLocalDayIso(date: string) {
+  return new Date(`${date}T00:00:00`).toISOString();
+}
+
+function endOfLocalDayIso(date: string) {
+  return new Date(`${date}T23:59:59.999`).toISOString();
+}
+
 function ApprovalClaimCard({ claim, view }: Readonly<{ claim: Claim; view: View }>) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -219,7 +227,11 @@ export function ApproverQueue() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [decidedStatus, setDecidedStatus] = useState<DecidedStatusFilter>("ALL");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
+
+  const dateRangeError = from && to && from > to ? "'From' must be on or before 'to'" : null;
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -239,19 +251,38 @@ export function ApproverQueue() {
     setPage(1);
   }
 
+  function handleFromChange(value: string) {
+    setFrom(value);
+    setPage(1);
+  }
+
+  function handleToChange(value: string) {
+    setTo(value);
+    setPage(1);
+  }
+
+  function handleClearDates() {
+    setFrom("");
+    setTo("");
+    setPage(1);
+  }
+
   const { data, isLoading } = useQuery({
-    queryKey: ["approvals", { view, search: debouncedSearch, decidedStatus, page }],
+    queryKey: ["approvals", { view, search: debouncedSearch, decidedStatus, from, to, page }],
     queryFn: () =>
       listApprovalQueue({
         decided: view === "decided",
         status: view === "decided" && decidedStatus !== "ALL" ? decidedStatus : undefined,
+        from: from ? startOfLocalDayIso(from) : undefined,
+        to: to ? endOfLocalDayIso(to) : undefined,
         search: debouncedSearch || undefined,
         page,
       }),
+    enabled: !dateRangeError,
   });
 
-  const claims = data?.claims ?? [];
-  const hasFilters = debouncedSearch !== "" || decidedStatus !== "ALL";
+  const claims = dateRangeError ? [] : (data?.claims ?? []);
+  const hasFilters = debouncedSearch !== "" || decidedStatus !== "ALL" || from !== "" || to !== "";
 
   return (
     <AppShell>
@@ -304,11 +335,42 @@ export function ApproverQueue() {
               </SelectContent>
             </Select>
           )}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="queue-from">From</Label>
+            <Input
+              id="queue-from"
+              type="date"
+              value={from}
+              max={to || undefined}
+              aria-invalid={!!dateRangeError}
+              onChange={(event) => handleFromChange(event.target.value)}
+              className="w-40"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="queue-to">To</Label>
+            <Input
+              id="queue-to"
+              type="date"
+              value={to}
+              min={from || undefined}
+              aria-invalid={!!dateRangeError}
+              onChange={(event) => handleToChange(event.target.value)}
+              className="w-40"
+            />
+          </div>
+          {(from || to) && (
+            <Button type="button" variant="ghost" size="sm" onClick={handleClearDates}>
+              Clear dates
+            </Button>
+          )}
         </div>
 
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {dateRangeError && <p className="text-sm text-destructive">{dateRangeError}</p>}
 
-        {!isLoading && claims.length === 0 && (
+        {isLoading && !dateRangeError && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+        {!isLoading && !dateRangeError && claims.length === 0 && (
           <p className="text-sm text-muted-foreground">
             {hasFilters
               ? "No claims match your filters."
